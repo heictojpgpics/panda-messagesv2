@@ -1,0 +1,51 @@
+# Cloudflare Workers deployment for Panda Messages.
+#
+# Used with @opennextjs/cloudflare (see DEPLOY.md section 2):
+#   npm install -D @opennextjs/cloudflare wrangler
+#   npx opennextjs-cloudflare build
+#   npx wrangler deploy
+#
+# main points at the wrapper that adds the scheduled (cron) handler on top
+# of the OpenNext worker. .open-next/ is produced by the build step above
+# and is not tracked in git.
+#
+# Secrets (never in this file, it is committed):
+#   npx wrangler secret put STRIPE_SECRET_KEY
+#   npx wrangler secret put STRIPE_WEBHOOK_SECRET
+#   npx wrangler secret put RESEND_API_KEY
+#   npx wrangler secret put CRON_SECRET
+#   (non-secret values may go in [vars] below)
+
+name = "panda-messagesv2"
+main = "worker-entry.ts"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# Static assets from the OpenNext build.
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
+
+[[r2_buckets]]
+binding = "CARD_PHOTOS"
+bucket_name = "panda-message-photos"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "panda-messages"
+database_id = "c7c00bdc-4d00-47f9-a5cd-e401f64830fa"
+migrations_dir = "migrations"
+
+# Non-secret configuration for the worker.
+[vars]
+NEXT_PUBLIC_SITE_URL = "https://panda-messages.heictojpg-pics.workers.dev"
+
+# Scheduled deliveries. Every minute the cron pings the delivery engine
+# inside the worker. Remove this block if you use an external scheduler
+# against /api/cron/deliveries instead.
+[triggers]
+crons = ["* * * * *"]
+
+# Observability: logs in the Cloudflare dashboard.
+[observability]
+enabled = true
